@@ -14,8 +14,6 @@ import { Text, View } from "@/components/Themed";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import Colors from "@/constants/Colors";
 import { useColorScheme } from "@/components/useColorScheme";
-import { Link } from "expo-router";
-import { SafeAreaProvider } from "react-native-safe-area-context";
 const isWeb = Platform.OS === "web";
 
 export default function TabOneScreen() {
@@ -29,6 +27,12 @@ export default function TabOneScreen() {
     { key: "price_desc", label: "Price descending" },
     { key: "rating", label: "Rating" },
   ];
+   const filters = [
+     { key: "new", label: "New" },
+     { key: "price_asc", label: "Price ascending" },
+     { key: "price_desc", label: "Price descending" },
+     { key: "rating", label: "Rating" },
+   ];
 
   const handleSelect = (key: string) => {
     setSelectedOption(key);
@@ -89,20 +93,25 @@ export default function TabOneScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
-            <Modal
-              animationType="slide"
-              transparent={true}
-              visible={modalVisible}
-            >
-              <View style={styles.centeredView}>
-                <View style={styles.modalView}>
-                  <Text>Hello World!</Text>
-                  <Pressable onPress={() => setModalVisible(!modalVisible)}>
-                    <Text>Hide Modal</Text>
-                  </Pressable>
-                </View>
-              </View>
-            </Modal>
+        <Modal animationType="slide" transparent={true} visible={modalVisible}>
+          <View style={styles.centeredView}>
+            <View style={styles.modalView}>
+              <Pressable onPress={() => setModalVisible(!modalVisible)}>
+                <FontAwesome
+                  name="500px"//find cross icons
+                  size={30}
+                  color={Colors[isLight ? "light" : "dark"].text}
+                  style={{
+                    opacity:  1,
+                    height: "auto",
+                    padding: 5,
+                    borderRadius: 90,
+                  }}
+                />
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
         <View
           style={styles.separator}
           lightColor="#eee"
