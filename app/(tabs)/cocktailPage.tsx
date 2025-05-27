@@ -83,7 +83,6 @@ export default function CocktailPage() {
             </Text>
           ))}
         </Text>
-
         <Text style={styles.taste}>Description: {cocktail?.Description}</Text>
       </View>
       <AppFooter />

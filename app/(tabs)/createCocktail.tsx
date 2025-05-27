@@ -9,6 +9,8 @@ import {
   TextInput,
 } from "react-native";
 import { launchImageLibrary } from "react-native-image-picker";
+import { CocktailPath, ServerName } from ".";
+import axios from "axios";
 
 type CocktailCardProps = {
   image: any;
@@ -70,6 +72,7 @@ export default function CreateCocktail() {
   const [ingredients, setIngredients] = useState("");
   const [recipe, setRecipe] = useState("");
   const [author, setAuthor] = useState("");
+  const [authorId, setAuthorId] = useState("");
   const selectImage = () => {
     launchImageLibrary(
       {
@@ -90,16 +93,57 @@ export default function CreateCocktail() {
       }
     );
   };
-  const handleSubmit = () => {
-    const formData = {
-      title,
-      description,
-      ingredients,
-      recipe,
-      author,
-      photo,
-    };
-    console.log("Form submitted:", formData);
+  const handleSubmit = async () => {
+    
+    const ingredientList = ingredients
+      .replace("- ", "-")
+      .split("-")
+      .filter((item) => item.trim() !== "");
+
+      if (
+        !ingredientList ||
+        !recipe ||
+        !title ||
+        !description ||
+        !authorId ||
+        !photo
+      ) {
+        setErrorMessage(
+          "Please Be sure too complete every information and select a photo"
+        );
+      }
+    const formData = new FormData();
+
+    formData.append("title", title);
+    formData.append("description", description);
+    formData.append("ingredientList", JSON.stringify(ingredientList));
+    formData.append("recipe", recipe);
+    formData.append("authorId", authorId);
+
+    // Ajout de l'image
+    formData.append("photo", {
+      uri: photo,
+      type: "image/png", // ou 'image/png' selon le cas
+      name:
+        title
+          .toLowerCase()
+          .split(" ")
+          .join("")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "") + ".png",
+    } as any);
+    try {
+      const response = await axios.post(
+        'https://ton-serveur.com/api/recipes',
+        formData
+      );
+      if (response.data) {
+
+      }
+      console.log("Recette envoyée avec succès :", response.data);
+    } catch (error: any) {
+      console.error("Erreur lors de l'envoi :", error.message);
+    }
   };
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -128,12 +172,13 @@ export default function CreateCocktail() {
               placeholder="Description"
               value={description}
               onChangeText={setDescription}
+              multiline
             />
 
             <Text style={styles.sectionTitle}>Ingredients</Text>
             <TextInput
               style={styles.textArea}
-              placeholder="List your ingredients here"
+              placeholder={`List your ingredients here like this:\n- Ingredient 1\n- Ingredient 2\n- etc`}
               value={ingredients}
               onChangeText={setIngredients}
               multiline
@@ -142,7 +187,7 @@ export default function CreateCocktail() {
             <Text style={styles.sectionTitle}>Recipe</Text>
             <TextInput
               style={styles.textArea}
-              placeholder="Explain the recipe steps"
+              placeholder={`Explain the recipe steps here like this:\n- Step 1\n- Step 2\n- etc`}
               value={recipe}
               onChangeText={setRecipe}
               multiline
@@ -294,3 +339,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 });
+
+function setErrorMessage(arg0: string) {
+  throw new Error("Function not implemented.");
+}

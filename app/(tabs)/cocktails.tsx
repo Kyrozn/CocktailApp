@@ -33,18 +33,11 @@ export default function ProductPage() {
       console.error("Error fetching data:", error);
     }
   };
-  const FilterCocktail = async () => {
+  const FilterCocktail = async (filter: string) => {
     try {
       const response = await axios.post(
-        `http://${ServerName}:5050${CocktailPath}filterCocktails`, {filter: selectedFilter}
+        `http://${ServerName}:5050${CocktailPath}filterCocktails`, {filter: filter}
       );
-      setCocktailData([{
-        ID: "ntm",
-        Name: "mathias",
-        Description: "mathieu",
-        Rating: 3,
-        Taste: ""
-      }]);
       setCocktailData(response.data.cocktails);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -75,7 +68,7 @@ export default function ProductPage() {
               styles.filterButton,
               selectedFilter === filter && styles.selectedFilter,
             ]}
-            onPress={() => {setSelectedFilter(filter), FilterCocktail()}}
+            onPress={() => {setSelectedFilter(filter); FilterCocktail(filter);}}
           >
             <Text style={styles.filterText}>{filter}</Text>
           </TouchableOpacity>
