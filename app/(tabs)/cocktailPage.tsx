@@ -1,8 +1,12 @@
 import AppFooter from "@/components/AppFooter";
-import { useLocalSearchParams } from "expo-router";
+import CocktailDetails from "@/components/CocktailDetails";
+import { useLocalSearchParams, withLayoutContext } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Image } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { CocktailPath, ServerName } from ".";
+import Header from "@/components/Header";
+
 type Cocktail = {
   Alcohol: string;
   CreatorID: string;
@@ -14,19 +18,23 @@ type Cocktail = {
   Taste: string;
   Valid: string;
   Volume: string;
+  Rating: number;
 };
+
 type Ingredients = {
   AlcoholContent: number;
   Categ: string;
   ID: string;
   Name: string;
 };
+
 export default function CocktailPage() {
   const { cocktailId } = useLocalSearchParams();
   const [cocktail, setCocktail] = useState<Cocktail | null>(null);
   const [ingredients, setIngredients] = useState<Ingredients[] | null>(null);
   const [loading, setLoading] = useState(true);
-  console.log(cocktailId);
+  const [copied, setCopied] = useState(false);
+
   useEffect(() => {
     if (!cocktailId) return;
 
@@ -35,16 +43,15 @@ export default function CocktailPage() {
         const response = await fetch(
           `http://${ServerName}:5050${CocktailPath}fetchCocktail`,
           {
-            method: "POST", // Assuming you are sending the ID via a POST request
+            method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ id: cocktailId }), // Send the cocktail ID in the body
+            body: JSON.stringify({ id: cocktailId }),
           }
         );
 
         const data = await response.json();
-        console.log(data);
         if (data.success) {
           setCocktail(data.cocktail[0]);
           setIngredients(data.ingredients);
@@ -58,32 +65,36 @@ export default function CocktailPage() {
     fetchCocktail();
   }, [cocktailId]);
 
+  const imageUrl = cocktail
+    ? `http://${ServerName}:5050/cocktailImage/${cocktail.Name.toLowerCase()
+        .split(" ")
+        .join("")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")}.png`
+    : "";
+
+  const handleCopyLink = async () => {
+    const url = `http://${ServerName}:8081/cocktailPage?cocktailId=${cocktailId}`;
+    await Clipboard.setStringAsync(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>CocktailApp</Text>
-      <Image
-        source={{
-          uri: `http://${ServerName}:5050/cocktailImage/${cocktail?.Name.toLowerCase()
-            .split(" ")
-            .join("")
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")}.png`,
-        }}
-        style={styles.image}
-      />
-      <View style={styles.details}>
-        <Text style={styles.cocktailName}>{cocktail?.Name}</Text>
-        <Text style={styles.category}>{cocktail?.Taste}</Text>
-        <Text style={styles.ingredients}>
-          Ingredients:{" "}
-          {ingredients?.map((element) => (
-            <Text key={element.ID}>
-              {element.Name} {element.Categ}{" "}
-              {element.AlcoholContent !== 0 ? element.AlcoholContent : ""}{", "}
-            </Text>
-          ))}
-        </Text>
-        <Text style={styles.taste}>Description: {cocktail?.Description}</Text>
+    <View style={{flex: 1, backgroundColor: 'white'}}>
+      <Header />
+      <View style={[styles.container, {flex: 1}]}>
+        <CocktailDetails
+          cocktail={cocktail}
+          ingredients={ingredients}
+          imageUrl={imageUrl}
+        />
+
+        <TouchableOpacity style={styles.shareButton} onPress={handleCopyLink}>
+          <Text style={styles.shareText}>Copy to the clipboard</Text>
+        </TouchableOpacity>
+
+        {copied && <Text style={styles.copiedText}>✅ Link copied!</Text>}
       </View>
       <AppFooter />
     </View>
@@ -96,34 +107,29 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: "#fff",
     alignItems: "center",
+    justifyContent: "center",
   },
   title: {
     fontSize: 24,
     fontWeight: "bold",
     marginBottom: 10,
   },
-  image: {
-    width: 300,
-    height: 300,
-    borderRadius: 10,
+  shareButton: {
+    marginTop: 20,
+    backgroundColor: "#007AFF",
+    padding: 12,
+    borderRadius: 8,
+    width: 200,
   },
-  details: {
+  shareText: {
+    color: "#fff",
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  copiedText: {
     marginTop: 10,
-    alignItems: "center",
+    color: "green",
+    fontSize: 16,
+    fontWeight: "600",
   },
-  cocktailName: {
-    fontSize: 22,
-    fontWeight: "bold",
-  },
-  category: {
-    fontSize: 18,
-    color: "gray",
-  },
-  ingredients: {
-    marginTop: 5,
-  },
-  taste: {
-    marginTop: 5,
-    fontWeight: "bold",
-  }
 });

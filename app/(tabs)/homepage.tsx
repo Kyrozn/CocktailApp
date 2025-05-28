@@ -1,9 +1,9 @@
-import { ServerName } from ".";
+import { CocktailPath, ServerName } from ".";
 import AppFooter from "@/components/AppFooter";
-import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { router } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { CocktailCard } from "@/components/CocktailCard";
+import { Header } from "@/components/Header";
 import {
   View,
   Text,
@@ -14,44 +14,7 @@ import {
   ScrollView,
   FlatList,
 } from "react-native";
-
-//
-
-const Header: React.FC = () => {
-  return (
-    <View style={out.headerContainer}>
-      <View style={out.nav}>
-        <View style={out.header}>
-          <Text style={out.title}>This is the header</Text>
-          <Text>User Infos</Text>
-        </View>
-      </View>
-    </View>
-  );
-};
-
-const out = StyleSheet.create({
-  headerContainer: {
-    position: "relative",
-  },
-  nav: {
-    width: "100%",
-    paddingInline: 40,
-    marginBlock: "auto",
-    backgroundColor: "#fff",
-  },
-  header: {
-    height: 100,
-    display: "flex",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-  },
-});
+import axios from "axios";
 
 const DiscoverListItem = ({ content }: { content: string }) => {
   return (
@@ -62,7 +25,23 @@ const DiscoverListItem = ({ content }: { content: string }) => {
   );
 };
 
-const HomePage = () => {
+export const HomePage = () => {
+  const [Cocktaildata, setCocktailData] = useState();
+  const FilterCocktail = async () => {
+    try {
+      const response = await axios.post(
+        `http://${ServerName}:5050${CocktailPath}filterCocktails`,
+        { filter: "Rating", limit: 3 }
+      );
+      setCocktailData(response.data.cocktails);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+  useEffect(() => {
+    FilterCocktail();
+  }, []);
+
   return (
     <View style={styles.global.body}>
       <Header />
@@ -128,7 +107,7 @@ const HomePage = () => {
               />
               <TouchableOpacity
                 style={styles.button.bg.primary}
-                onPress={() => router.push('/cocktails')}
+                onPress={() => router.push("/cocktails")}
               >
                 <Text style={styles.button.text.primary}>
                   Explore Our Cocktail Recipes
@@ -143,32 +122,7 @@ const HomePage = () => {
         >
           <Text style={styles.cocktail.div.title}>Our Best Cocktails</Text>
           <FlatList
-            data={[
-              {
-                ID: "1",
-                Name: "Mojito",
-                Description:
-                  "Un cocktail rafraîchissant à base de menthe et de citron vert.",
-                Rating: 4,
-                Taste: "chiant"
-              },
-              {
-                ID: "1",
-                Name: "Tequila Sunrise",
-                Description:
-                  "Un cocktail visuellement impressionnant avec des couches de couleurs rappelant un lever de soleil.",
-                Rating: 4,
-                Taste: "strong"
-              },
-              {
-                ID: "1",
-                Name: "Blue Lagoon",
-                Description:
-                  "Un cocktail exotique et coloré grâce au curaçao bleu.",
-                Rating: 2,
-                Taste: "sour"
-              },
-            ]}
+            data={Cocktaildata}
             contentContainerStyle={styles.cocktail.cards.container}
             renderItem={({ item }) => <CocktailCard data={item} />}
           />
@@ -377,5 +331,3 @@ const styles = (() => {
     },
   };
 })();
-
-export default HomePage;

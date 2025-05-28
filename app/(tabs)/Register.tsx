@@ -1,4 +1,3 @@
-import * as SecureStore from "expo-secure-store";
 import React from "react";
 import {
   View,
@@ -58,7 +57,7 @@ export default function Register({ switchForm }: SignupProps) {
 
     try {
       const response = await axios.post(
-        `https://${ServerName}:5050${AuthPath}login/`,
+        `http://${ServerName}:5050${AuthPath}register/`,
         JSON.stringify(payload),
         {
           headers: {
@@ -67,8 +66,8 @@ export default function Register({ switchForm }: SignupProps) {
         }
       );
 
-      if (response.data?.code === "200" && response.data?.success === true) {
-        await SecureStore.setItemAsync("token", response.data.token);
+      if (response.data?.code === "201" && response.data?.success === true) {
+        localStorage.setItem("token", response.data.user.id);
         router.push("/");
       } else {
         setErrorMessage("Signup failed. Please try again.");

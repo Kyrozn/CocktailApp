@@ -3,13 +3,14 @@ import {
   Platform,
 } from "react-native";
 import React from "react";
-import HomePage from "./homepage";
+import {HomePage} from "./homepage";
 export const ServerName: string =
   process.env.EXPO_PUBLIC_SERVER_ADDRESS || "localhost";
 export const CocktailPath: string | undefined =
   process.env.EXPO_PUBLIC_COCKTAILS_PATH;
 export const AuthPath: string | undefined =
   process.env.EXPO_PUBLIC_AUTH_PATH;
+export const AdminPath: string | undefined = process.env.EXPO_PUBLIC_ADMIN_PATH;
 const isWeb = Platform.OS === "web";
 
 export default function Index() {

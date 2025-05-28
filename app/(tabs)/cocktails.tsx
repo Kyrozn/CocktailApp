@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Pressable,
+  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
@@ -15,6 +16,9 @@ import { router } from "expo-router";
 import AppFooter from "@/components/AppFooter";
 import { CocktailPath, ServerName } from ".";
 import { Cocktail, CocktailCard } from "@/components/CocktailCard";
+import Header from "@/components/Header";
+import Icon from "react-native-vector-icons/FontAwesome";
+
 
 export default function ProductPage() {
   const [cocktailData, setCocktailData] = useState<Cocktail[]>([]);
@@ -27,6 +31,17 @@ export default function ProductPage() {
     try {
       const response = await axios.get(
         `http://${ServerName}:5050${CocktailPath}fetchCocktails`
+      );
+      setCocktailData(response.data.cocktails);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+  const searchCocktail = async (query: string) => {
+    try {
+      const response = await axios.post(
+        `http://${ServerName}:5050${CocktailPath}searchCocktail`,
+        { sentence: query }
       );
       setCocktailData(response.data.cocktails);
     } catch (error) {
@@ -49,15 +64,24 @@ export default function ProductPage() {
   }, []);
 
   return (
-    <View style={styles.container}>
+    /*<View style={styles.container}>
+      <Header />
       <View style={styles.header}>
         <Ionicons name="filter" size={24} color="black" />
         <TextInput
           style={styles.searchInput}
           placeholder="Search"
           value={searchQuery}
-          onChangeText={setSearchQuery}
+          onChangeText={(text) => {
+            setSearchQuery(text);
+            if (text.length === 0) {
+              fetchCocktails(); // recharge tous les cocktails si l'utilisateur vide le champ
+            } else if (text.length >= 3) {
+              searchCocktail(text); // ne lance la recherche que si 3+ caractères
+            }
+          }}
         />
+
         <Ionicons name="person-circle-outline" size={24} color="black" />
       </View>
       <View style={styles.filterContainer}>
@@ -68,7 +92,10 @@ export default function ProductPage() {
               styles.filterButton,
               selectedFilter === filter && styles.selectedFilter,
             ]}
-            onPress={() => {setSelectedFilter(filter); FilterCocktail(filter);}}
+            onPress={() => {
+              setSelectedFilter(filter);
+              FilterCocktail(filter);
+            }}
           >
             <Text style={styles.filterText}>{filter}</Text>
           </TouchableOpacity>
@@ -76,103 +103,194 @@ export default function ProductPage() {
       </View>
 
       <FlatList
-        data={cocktailData}
-        keyExtractor={(item) => item.ID}
-        numColumns={3}
-        contentContainerStyle={styles.grid}
-        columnWrapperStyle={{ justifyContent: "center" }}
-        renderItem={({ item }) => <CocktailCard data={item} />}
-      />
+          data={cocktailData}
+          keyExtractor={(item) => item.ID}
+          numColumns={3}
+          contentContainerStyle={styles.container.grid}
+          columnWrapperStyle={{ justifyContent: "center" }}
+          renderItem={({ item }) => <CocktailCard data={item} />}
+        />
       <AppFooter />
+    </View>*/
+    <View style={styles.container.body}>
+      <Header />
+      <ScrollView style={{ flex: 1, paddingTop: 40 }}>
+        <View style={{ marginInline: "auto" }}>
+          <View style={styles.search.container}>
+            <View style={{ ...styles.search.element, flex: 1 }}>
+              <TextInput
+                style={styles.search.input}
+                placeholder="Search ..."
+                value={searchQuery}
+                onChangeText={(text) => {
+                  setSearchQuery(text);
+                  if (text.length === 0) {
+                    fetchCocktails(); // recharge tous les cocktails si l'utilisateur vide le champ
+                  } else if (text.length >= 3) {
+                    searchCocktail(text); // ne lance la recherche que si 3+ caractères
+                  }
+                }}
+              />
+              <TouchableOpacity
+                style={styles.button.bg.primary}
+                onPress={() => router.push("/createCocktail")}
+              >
+                <Icon
+                  name="plus"
+                  size={14}
+                  color="#fff"
+                  style={styles.button.icon.primary}
+                />
+                <Text style={styles.button.text.primary}>New</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.search.element}>
+              {filters.map((filter) => (
+                <TouchableOpacity
+                  key={filter}
+                  style={[
+                    styles.filter.button,
+                    selectedFilter === filter
+                      ? styles.filter.selected
+                      : styles.filter.default,
+                  ]}
+                  onPress={() => {
+                    setSelectedFilter(filter);
+                    FilterCocktail(filter);
+                  }}
+                >
+                  {selectedFilter === filter && (
+                    <Icon
+                      name="check"
+                      size={16}
+                      color={styles.filter.selectedText.color}
+                    />
+                  )}
+
+                  <Text
+                    style={
+                      selectedFilter === filter
+                        ? styles.filter.selectedText
+                        : styles.filter.defaultText
+                    }
+                  >
+                    {filter}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+           </View>
+
+          <FlatList
+            data={cocktailData}
+            keyExtractor={(item) => item.ID}
+            numColumns={3}
+            contentContainerStyle={styles.container.grid}
+            columnWrapperStyle={{ justifyContent: "center" }}
+            renderItem={({ item }) => <CocktailCard data={item} />}
+            style={{height: "100%"}}
+          />
+        </View>
+        <AppFooter />
+      </ScrollView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-    paddingTop: 40,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    marginBottom: 10,
-  },
-  searchInput: {
-    flex: 1,
-    marginHorizontal: 10,
-    padding: 8,
-    borderWidth: 1,
-    borderRadius: 8,
-    borderColor: "#ccc",
-  },
-  filterContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginBottom: 10,
-  },
-  filterButton: {
-    padding: 6,
-    marginHorizontal: 5,
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: "#ccc",
-  },
-  selectedFilter: { backgroundColor: "black" },
-  filterText: { color: "black", fontSize: 14 },
-  grid: {
-    justifyContent: "center",
-    paddingBottom: 50,
-    paddingHorizontal: 10,
-    flexGrow: 1,
-    alignItems: "center", // Centre le contenu
-  },
-  card: {
-    width: 300, // Taille ajustée pour un bon affichage
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
-    alignItems: "center",
-    marginHorizontal: 10, // Espacement latéral
-    marginBottom: 20, // Espacement entre les lignes
-  },
-  image: {
-    width: "100%",
-    height: 200,
-    borderTopEndRadius: 20,
-  },
-  cardContent: {
-    padding: 15,
-    alignItems: "center",
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
-  description: {
-    fontSize: 14,
-    color: "#555",
-    textAlign: "center",
-  },
-  footer: {
-    padding: 16,
-    alignItems: "center",
-    backgroundColor: "#f8f8f8",
-    marginTop: 20,
-  },
-  footerIcons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: 80,
-    marginBottom: 10,
-  },
-  footerText: { fontSize: 12, color: "gray", textAlign: "center" },
-});
+const styles = (() => {
+  const global = StyleSheet.create({
+    body: {
+      flex: 1,
+      backgroundColor: "#fff",
+    },
+    button: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+    },
+    buttonText: {
+      fontSize: 14,
+      fontWeight: "bold",
+    },
+  });
+
+  return {
+    global,
+    button: {
+      bg: StyleSheet.create({
+        primary: {
+          ...global.button,
+          backgroundColor: "#2C2C2C",
+        },
+      }),
+      text: StyleSheet.create({
+        primary: {
+          ...global.buttonText,
+          color: "#fff",
+        },
+      }),
+      icon: StyleSheet.create({
+        primary: {
+          marginRight: 8,
+        },
+      }),
+    },
+    container: StyleSheet.create({
+      body: {
+        flex: 1,
+        backgroundColor: "#fff",
+      },
+      grid: {
+        justifyContent: "center",
+        paddingBottom: 50,
+        flexGrow: 1,
+        alignItems: "center",
+      },
+    }),
+    search: StyleSheet.create({
+      container: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginBottom: 10,
+        gap: 24,
+        flex: 1,
+      },
+      element: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+      },
+      input: {
+        flex: 1,
+        padding: 8,
+        borderWidth: 1,
+        borderRadius: 8,
+        borderColor: "#ccc",
+      },
+    }),
+    filter: StyleSheet.create({
+      button: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+        gap: 5,
+      },
+      default: {
+        backgroundColor: "#F5F5F5",
+      },
+      defaultText: {
+        color: "#757575",
+      },
+      selected: {
+        backgroundColor: "#3A3A3A",
+      },
+      selectedText: {
+        color: "#F5F5F5",
+      },
+    }),
+  };
+})();

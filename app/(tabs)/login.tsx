@@ -1,5 +1,4 @@
-import * as SecureStore from "expo-secure-store";
-import React from 'react';
+import React from "react";
 import {
   View,
   Text,
@@ -32,28 +31,29 @@ export default function Login({ switchForm }: LoginProps) {
     stayConnected,
     setStayConnected,
   } = useAuth();
-  
+
   const handleSignin = async () => {
     if (!email || !password) {
-      return
+      return;
     }
     const payload = {
       email: email,
-      password: jsSha512.sha512(password)
+      password: jsSha512.sha512(password),
     };
     axios
-      .post(`https://${ServerName}:5050${AuthPath}login`, payload)
+      .post(`http://${ServerName}:5050${AuthPath}login`, payload)
       .then(async (response) => {
         const { data } = response;
+        console.log(data);
         if (data.success && data.token) {
-          await SecureStore.setItemAsync("token", data.token);
-          return router.push("/");
+          localStorage.setItem("token", data.user.id);
+          router.push("/");
+          return;
         }
       })
       .catch((err) => {
         console.error("Erreur de login :", err.response?.data || err.message);
       });
-
   };
   return (
     <View style={styles.formContainer}>
@@ -97,7 +97,7 @@ export default function Login({ switchForm }: LoginProps) {
       </TouchableOpacity>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {

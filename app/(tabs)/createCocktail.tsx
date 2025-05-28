@@ -7,7 +7,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
+  TextInputProps,
 } from "react-native";
+import { Picker } from "@react-native-picker/picker";
 import { launchImageLibrary } from "react-native-image-picker";
 import { CocktailPath, ServerName } from ".";
 import axios from "axios";
@@ -19,6 +21,29 @@ type CocktailCardProps = {
   recipe: string;
   isCreated: boolean;
   onDelete?: () => void;
+};
+
+const MyTextInput: React.FC<TextInputProps> = (props) => (
+  <TextInput placeholderTextColor="rgba(0,0,0,0.3)" {...props} />
+);
+
+const AutoGrowingTextInput: React.FC<TextInputProps> = ({
+  style,
+  ...props
+}) => {
+  const [inputHeight, setInputHeight] = useState(60);
+
+  return (
+    <TextInput
+      {...props}
+      placeholderTextColor="rgba(0,0,0,0.3)"
+      multiline
+      onContentSizeChange={(event) =>
+        setInputHeight(event.nativeEvent.contentSize.height)
+      }
+      style={[style, { height: inputHeight }]}
+    />
+  );
 };
 
 const CocktailCard: React.FC<CocktailCardProps> = ({
@@ -69,10 +94,24 @@ export default function CreateCocktail() {
   const [photo, setPhoto] = useState<string | undefined>(undefined);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [ingredients, setIngredients] = useState("");
+  const [ingredientFields, setIngredientFields] = useState([
+    { name: "", category: "", alcohol: "" },
+  ]);
   const [recipe, setRecipe] = useState("");
   const [author, setAuthor] = useState("");
-  const [authorId, setAuthorId] = useState("");
+  const [authorId, setAuthorId] = useState<string | null>("");
+  const [taste, setTaste] = useState("");
+  function dataURLtoBlob(dataurl: string) {
+    const arr = dataurl.split(",");
+    const mime = arr[0].match(/:(.*?);/)![1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  }
   const selectImage = () => {
     launchImageLibrary(
       {
@@ -93,109 +132,198 @@ export default function CreateCocktail() {
       }
     );
   };
+
   const handleSubmit = async () => {
-    
-    const ingredientList = ingredients
-      .replace("- ", "-")
-      .split("-")
-      .filter((item) => item.trim() !== "");
+    // Si authorId ne change jamais, évite de le set ici
+    const currentAuthorId = "ac07a1be-b047-4a53-9d28-010b4868f2ef";
 
+    if (
+      !recipe ||
+      !title ||
+      !description ||
+      !currentAuthorId ||
+      !photo ||
+      !taste
+    ) {
+      setErrorMessage(
+        "Please be sure to complete every information and select a photo"
+      );
+      return;
+    }
+
+    const blob = photo ? dataURLtoBlob(photo) : undefined;
+
+    // Calcul de la moyenne d'alcool
+    let totalAlcohol = 0;
+    let count = 0;
+    ingredientFields.forEach((ingredient) => {
       if (
-        !ingredientList ||
-        !recipe ||
-        !title ||
-        !description ||
-        !authorId ||
-        !photo
+        ingredient.alcohol !== undefined &&
+        !isNaN(Number(ingredient.alcohol))
       ) {
-        setErrorMessage(
-          "Please Be sure too complete every information and select a photo"
-        );
+        totalAlcohol += Number(ingredient.alcohol);
+        count++;
       }
-    const formData = new FormData();
+    });
+    const averageAlcohol = count > 0 ? totalAlcohol / count : 0;
 
+    const formData = new FormData();
     formData.append("title", title);
     formData.append("description", description);
-    formData.append("ingredientList", JSON.stringify(ingredientList));
+    formData.append("ingredientList", JSON.stringify(ingredientFields));
     formData.append("recipe", recipe);
-    formData.append("authorId", authorId);
+    formData.append("taste", taste);
+    formData.append("alcohol", averageAlcohol.toString());
+    formData.append("authorId", currentAuthorId);
 
-    // Ajout de l'image
-    formData.append("photo", {
-      uri: photo,
-      type: "image/png", // ou 'image/png' selon le cas
-      name:
+    if (blob) {
+      const fileName =
         title
           .toLowerCase()
           .split(" ")
           .join("")
           .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "") + ".png",
-    } as any);
+          .replace(/[\u0300-\u036f]/g, "") + ".png";
+      formData.append("photo", blob, fileName);
+    }
+
     try {
       const response = await axios.post(
-        'https://ton-serveur.com/api/recipes',
-        formData
+        `http://${ServerName}:5050/api/recipes`,
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
       );
-      if (response.data) {
 
+      if (response.data?.success) {
+        console.log("Recette envoyée avec succès :", response.data);
+        // reset form or redirect if needed
+      } else {
+        setErrorMessage(
+          response.data?.message || "Erreur lors de la création de la recette"
+        );
       }
-      console.log("Recette envoyée avec succès :", response.data);
     } catch (error: any) {
-      console.error("Erreur lors de l'envoi :", error.message);
+      console.error("Erreur axios :", error.message);
+      setErrorMessage("Erreur lors de l'envoi de la recette");
     }
   };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.sectionLabel}>_ Create Cocktail</Text>
       <View style={styles.card}>
         <View style={styles.cardContent}>
-          <TouchableOpacity onPress={selectImage}>
-            {photo ? (
-              <Image source={{ uri: photo }} style={styles.cardImage} />
-            ) : (
-              <View style={styles.cardImage}>
-                <Text style={styles.title}>Tap to select image</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          <View style={styles.cardImage}>
+            <TouchableOpacity onPress={selectImage}>
+              {photo ? (
+                <Image source={{ uri: photo }} style={styles.cardImage} />
+              ) : (
+                <View style={styles.cardImage}>
+                  <Text style={styles.title}>Tap to select image</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.cardInfo}>
-            <TextInput
-              style={styles.title}
+            <MyTextInput
+              style={styles.textAreaTitle}
               placeholder="Enter Title"
               value={title}
               onChangeText={setTitle}
             />
-            <TextInput
-              style={styles.description}
+            <AutoGrowingTextInput
+              style={styles.textArea}
               placeholder="Description"
               value={description}
               onChangeText={setDescription}
-              multiline
             />
 
             <Text style={styles.sectionTitle}>Ingredients</Text>
-            <TextInput
-              style={styles.textArea}
-              placeholder={`List your ingredients here like this:\n- Ingredient 1\n- Ingredient 2\n- etc`}
-              value={ingredients}
-              onChangeText={setIngredients}
-              multiline
-            />
+            {ingredientFields.map((item, index) => (
+              <View key={index} style={{ marginBottom: 12 }}>
+                <MyTextInput
+                  style={styles.textArea}
+                  placeholder="Ingredient name"
+                  value={item.name}
+                  onChangeText={(text) => {
+                    const updated = [...ingredientFields];
+                    updated[index].name = text;
+                    setIngredientFields(updated);
+                  }}
+                />
+                <View style={[styles.textAreaDropdown, { padding: 0 }]}>
+                  <Picker
+                    selectedValue={item.category}
+                    onValueChange={(value: string) => {
+                      const updated = [...ingredientFields];
+                      updated[index].category = value;
+                      setIngredientFields(updated);
+                    }}
+                    style={{ width: "100%" }}
+                  >
+                    <Picker.Item label="Select category..." value="" />
+                    <Picker.Item label="Alcohol" value="Alcohol" />
+                    <Picker.Item label="Juice" value="Juice" />
+                    <Picker.Item label="Sirop" value="Sirop" />
+                    <Picker.Item label="Soft" value="Soft" />
+                    <Picker.Item label="Trim" value="Trim" />
+                    <Picker.Item label="Other" value="Other" />
+                  </Picker>
+                </View>
+
+                <MyTextInput
+                  style={styles.textArea}
+                  placeholder="Alcohol content (%)"
+                  keyboardType="numeric"
+                  value={item.alcohol}
+                  onChangeText={(text) => {
+                    const updated = [...ingredientFields];
+                    updated[index].alcohol = text;
+                    setIngredientFields(updated);
+                  }}
+                />
+              </View>
+            ))}
+            <TouchableOpacity
+              style={[
+                styles.submitButton,
+                { marginBottom: 20, backgroundColor: "#444" },
+              ]}
+              onPress={() =>
+                setIngredientFields([
+                  ...ingredientFields,
+                  { name: "", category: "", alcohol: "" },
+                ])
+              }
+            >
+              <Text style={styles.submitText}>+ Add Ingredient</Text>
+            </TouchableOpacity>
 
             <Text style={styles.sectionTitle}>Recipe</Text>
-            <TextInput
+            <AutoGrowingTextInput
               style={styles.textArea}
               placeholder={`Explain the recipe steps here like this:\n- Step 1\n- Step 2\n- etc`}
               value={recipe}
               onChangeText={setRecipe}
-              multiline
             />
+            <Text style={styles.sectionTitle}>Taste</Text>
+            <View style={[styles.textAreaDropdown, { padding: 0 }]}>
+              <Picker
+                selectedValue={taste}
+                onValueChange={(value: string) => setTaste(value)}
+                style={{ width: "100%" }}
+              >
+                <Picker.Item label="Select taste..." value="" />
+                <Picker.Item label="Sweet" value="Sweet" />
+                <Picker.Item label="Sour" value="Sour" />
+                <Picker.Item label="Strong" value="Strong" />
+              </Picker>
+            </View>
 
             <Text style={styles.sectionTitle}>Author</Text>
-            <TextInput
-              style={styles.author}
+            <MyTextInput
+              style={styles.textArea}
               placeholder="Your name"
               value={author}
               onChangeText={setAuthor}
@@ -247,16 +375,24 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
+    width: "100%",
+    justifyContent: "center",
+    alignItems: "center",
   },
   cardContent: {
     flexDirection: "row",
-    gap: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 70,
   },
   cardImage: {
-    width: 160,
-    height: 160,
-    borderRadius: 16,
+    width: 460,
+    height: 540,
+    borderRadius: 15,
     backgroundColor: "#ccc",
+    resizeMode: "cover",
+    justifyContent: "center",
+    alignItems: "center",
   },
   cardInfo: {
     flex: 1,
@@ -291,6 +427,28 @@ const styles = StyleSheet.create({
     padding: 8,
     marginBottom: 16,
     minHeight: 60,
+    width: 500,
+    textAlignVertical: "top",
+  },
+  textAreaTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 16,
+    minHeight: 60,
+  },
+  textAreaDropdown: {
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    backgroundColor: "#fafafa",
+    marginVertical: 8,
+    paddingHorizontal: 15,
+    justifyContent: "center",
   },
   stepButton: {
     backgroundColor: "#333",
@@ -341,5 +499,5 @@ const styles = StyleSheet.create({
 });
 
 function setErrorMessage(arg0: string) {
-  throw new Error("Function not implemented.");
+  console.warn(arg0);
 }
